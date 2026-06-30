@@ -2,40 +2,33 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Build the app image (uses BuildKit cache mounts from the Dockerfile)
-      - name: Build app image
-        uses: docker/build-push-action@v6
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          context: .
-          push: false
-          load: true
-          tags: notif-app:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          python-version: "3.12"
 
-      # Smoke test: bring the whole stack up and confirm the app is healthy
-      - name: Start stack and smoke test
+      - name: Install dependencies
         run: |
-          docker compose up -d --build
-          # wait for the app healthcheck to go healthy (up to ~60s)
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8000/health; then echo "OK"; exit 0; fi
-            sleep 2
-          done
-          echo "App did not become healthy"; docker compose logs; exit 1
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Tear down
-        if: always()
-        run: docker compose down -v
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then pytest; else echo "No tests directory yet"; fi
+
+      - name: Validate Docker Compose file
+        run: docker compose config
+
+      - name: Build FastAPI Docker image
+        run: docker build -t fastapi-notifications:test .

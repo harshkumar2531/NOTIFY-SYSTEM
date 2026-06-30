@@ -46,6 +46,11 @@ app = FastAPI(
     title="Realtime Notification System",
     lifespan=lifespan,
 )
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("index.html")
+
 print(settings.POSTGRES_DSN)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 

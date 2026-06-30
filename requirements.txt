@@ -1,14 +1,8 @@
-# --- Web framework + server ---
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-
-# --- Config / settings from .env ---
-pydantic-settings==2.7.1
-
-# --- Async database drivers (ALL async — never block the event loop) ---
-pymongo==4.10.1          # MongoDB: new built-in async API (replaces deprecated motor)
-asyncpg==0.30.0          # PostgreSQL: fast async driver
-redis==5.2.1             # Redis: use redis.asyncio
-
-# --- Async MQTT client (talk to VerneMQ) ---
-aiomqtt==2.3.0
+fastapi
+uvicorn[standard]
+pydantic-settings
+motor
+redis
+asyncpg
+sqlalchemy
+paho-mqtt

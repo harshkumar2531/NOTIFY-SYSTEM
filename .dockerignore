@@ -1,30 +1,30 @@
-# Git
 .git
 .gitignore
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-env/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Env / secrets
 .env
 .env.*
 !.env.example
 
-# Editors / OS
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.venv/
+venv/
+env/
+
 .vscode/
 .idea/
-.DS_Store
 
-# Docs / misc
+.DS_Store
+Thumbs.db
+
+coverage/
+htmlcov/
+build/
+dist/
+*.egg-info/
+
 README.md
-*.md
-.github/

@@ -1,52 +1,160 @@
-services:
+version: "3.9"
 
-  postgres:
-    image: postgres:16
-    container_name: notify-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: notify
-      POSTGRES_PASSWORD: notify_pass
-      POSTGRES_DB: notifydb
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
     ports:
-      - "5434:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    environment:
+      # PostgreSQL
+      POSTGRES_DSN: postgresql://notify:notify_pass@postgres:5432/notifydb
+
+      # MongoDB
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB: notifydb
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+
+      # VerneMQ
+      MQTT_HOST: vernemq
+      MQTT_PORT: 1883
+      MQTT_USERNAME: backend
+      MQTT_PASSWORD: backend-secret
+
+      # Browser WebSocket URL
+      MQTT_WS_URL: ws://localhost:8080/mqtt
+
+      API_KEY: dev-secret-change-me
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      postgres:
+        condition: service_healthy
+
+      vernemq:
+        condition: service_healthy
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U notify -d notifydb"]
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()\""
+        ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   mongodb:
     image: mongo:7
-    container_name: notify-mongodb
-    restart: unless-stopped
+
     ports:
       - "27017:27017"
+
     volumes:
-      - mongodata:/data/db
+      - mongodb_data:/data/db
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"db.adminCommand({ ping: 1 }).ok\" | grep 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   redis:
-    image: redis:7
-    container_name: notify-redis
-    restart: unless-stopped
+    image: redis:7-alpine
+
     ports:
       - "6379:6379"
 
-  vernemq:
-    image: vernemq/vernemq:latest
-    container_name: notify-vernemq
-    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  postgres:
+    image: postgres:17-alpine
+
+    ports:
+      - "5434:5432"
+
     environment:
-      DOCKER_VERNEMQ_ACCEPT_EULA: "yes"
-      DOCKER_VERNEMQ_ALLOW_ANONYMOUS: "on"
-      DOCKER_VERNEMQ_LISTENER__WS__DEFAULT: "0.0.0.0:8080"
+      POSTGRES_DB: notifydb
+      POSTGRES_USER: notify
+      POSTGRES_PASSWORD: notify_pass
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U notify -d notifydb"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  vernemq:
+    image: vernemq/vernemq:2.1.1-alpine
+
     ports:
       - "1883:1883"
       - "8080:8080"
       - "8888:8888"
 
+    environment:
+      DOCKER_VERNEMQ_ACCEPT_EULA: "yes"
+      DOCKER_VERNEMQ_ALLOW_ANONYMOUS: "on"
+      DOCKER_VERNEMQ_LISTENER__TCP__DEFAULT: "0.0.0.0:1883"
+      DOCKER_VERNEMQ_LISTENER__WS__DEFAULT: "0.0.0.0:8080"
+      DOCKER_VERNEMQ_LISTENER__HTTP__METRICS: "0.0.0.0:8888"
+
+    volumes:
+      - vernemq_data:/vernemq/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "vmq-admin cluster show | grep -q true"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
 volumes:
-  pgdata:
-  mongodata:
+  mongodb_data:
+  redis_data:
+  postgres_data:
+  vernemq_data:

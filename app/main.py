@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.state import clients
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,6 +48,16 @@ app = FastAPI(
 )
 print(settings.POSTGRES_DSN)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def index():
+    return FileResponse("static/index.html")
 
 @app.get("/")
 async def root():

@@ -1,25 +1,44 @@
 # Python
 __pycache__/
 *.py[cod]
-.venv/
-venv/
-env/
-*.egg-info/
+*.pyo
+*.pyd
+.Python
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+coverage/
+htmlcov/
 
-# Environment / secrets — NEVER commit real creds
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
 .env
 .env.*
 !.env.example
 
-# Docker volumes / local data
-*.log
-
-# Editors / OS
+# IDE/editor
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
 
+# Logs
+*.log
+logs/
+
+# Build/dist
+build/
+dist/
+*.egg-info/
+
+# Docker/local volumes if any are bind-mounted
+docker-data/

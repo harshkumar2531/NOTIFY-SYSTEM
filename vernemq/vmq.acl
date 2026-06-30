@@ -1,0 +1,16 @@
+# VerneMQ Access Control List (ACL).
+# Controls WHO may publish/subscribe to WHICH topics.
+# Used only when you start with docker-compose.secure.yml (secure mode).
+#
+# %u = the authenticated username of the connected client.
+
+# ---- Backend publisher account ("backend") ----
+# May publish notifications to ANY user's topic.
+user backend
+topic write users/+/notifications
+
+# ---- End users (any authenticated user) ----
+# May ONLY read (subscribe to) their OWN topics. %u is replaced by their
+# username, so 'user123' can read users/user123/# but NOT users/user456/#.
+pattern read users/%u/notifications
+pattern read users/%u/#

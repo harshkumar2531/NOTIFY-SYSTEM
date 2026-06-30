@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Notifications</title>
+  <!-- MQTT.js over WebSocket. (This CDN script needs internet; that's fine.) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; --text:#e2e8f0; }
+    * { box-sizing: border-box; }
+    body {
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height:100vh;
+    }
+    header {
+      padding:16px 24px; background:#020617; display:flex; flex-wrap:wrap;
+      gap:12px; align-items:center; border-bottom:1px solid #334155;
+    }
+    header h1 { font-size:18px; margin:0; margin-right:auto; }
+    input, button {
+      font-size:14px; padding:8px 12px; border-radius:8px; border:1px solid #334155;
+      background:#0f172a; color:var(--text);
+    }
+    button { background:var(--accent); color:#04263a; font-weight:600; cursor:pointer; border:none; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    #status { font-size:13px; padding:4px 10px; border-radius:999px; background:#334155; }
+    #status.on { background:#166534; color:#dcfce7; }
+    #status.off { background:#7f1d1d; color:#fee2e2; }
+    main { padding:24px; max-width:720px; margin:0 auto; }
+    .empty { opacity:.6; text-align:center; margin-top:40px; }
+    .card {
+      background: var(--card); border:1px solid #334155; border-left:4px solid var(--accent);
+      border-radius:10px; padding:14px 16px; margin-bottom:12px;
+      animation: pop .25s ease;
+    }
+    .card .title { font-weight:700; margin-bottom:4px; }
+    .card .body { font-size:14px; opacity:.9; white-space:pre-wrap; word-break:break-word; }
+    .card .meta { font-size:11px; opacity:.55; margin-top:8px; }
+    @keyframes pop { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔔 Live Notifications</h1>
+    <input id="userId" placeholder="user_id" value="123" />
+    <button id="connectBtn">Connect</button>
+    <span id="status" class="off">disconnected</span>
+  </header>
+
+  <main>
+    <div id="notifications"><p class="empty">No notifications yet. Connect and wait for messages…</p></div>
+  </main>
+
+  <script>
+    // The browser runs on the HOST, so it must reach VerneMQ on localhost:8080.
+    // The /mqtt path is REQUIRED by VerneMQ for websocket connections.
+    const BROKER_URL = "ws://localhost:8080/mqtt";
+
+    const statusEl = document.getElementById("status");
+    const listEl   = document.getElementById("notifications");
+    const btn      = document.getElementById("connectBtn");
+    const userInput= document.getElementById("userId");
+
+    let client = null;
+    let currentTopic = null;
+
+    function setStatus(text, on) {
+      statusEl.textContent = text;
+      statusEl.className = on ? "on" : "off";
+    }
+
+    function addCard({ title, body, raw }) {
+      const empty = listEl.querySelector(".empty");
+      if (empty) empty.remove();
+      const card = document.createElement("div");
+      card.className = "card";
+      const time = new Date().toLocaleTimeString();
+      card.innerHTML = `
+        <div class="title"></div>
+        <div class="body"></div>
+        <div class="meta"></div>`;
+      card.querySelector(".title").textContent = title || "Notification";
+      card.querySelector(".body").textContent  = body  || raw;
+      card.querySelector(".meta").textContent   = time;
+      listEl.prepend(card);
+    }
+
+    function connect() {
+      const userId = userInput.value.trim();
+      if (!userId) { alert("Enter a user_id"); return; }
+
+      // Clean up any previous connection
+      if (client) { try { client.end(true); } catch (e) {} }
+
+      setStatus("connecting…", false);
+      // A unique clientId avoids "clientId already in use" disconnect loops.
+      const clientId = "web_" + userId + "_" + Math.random().toString(16).slice(2, 8);
+
+      client = mqtt.connect(BROKER_URL, {
+        clientId,
+        clean: true,
+        reconnectPeriod: 2000,
+        connectTimeout: 8000,
+        // If you later enable auth, add: username, password
+      });
+
+      currentTopic = `users/${userId}/notifications`;
+
+      client.on("connect", () => {
+        setStatus("connected", true);
+        client.subscribe(currentTopic, { qos: 1 }, (err) => {
+          if (err) setStatus("subscribe failed", false);
+          else addCard({ title: "Subscribed", body: `Listening on ${currentTopic}` });
+        });
+      });
+
+      client.on("message", (topic, payload) => {
+        const raw = payload.toString();
+        let title, body;
+        try {
+          const data = JSON.parse(raw);   // your backend likely publishes JSON
+          title = data.title || data.type || "Notification";
+          body  = data.message || data.body || JSON.stringify(data, null, 2);
+        } catch {
+          // not JSON — show the plain string
+          raw && (body = raw);
+        }
+        addCard({ title, body, raw });
+      });
+
+      client.on("reconnect", () => setStatus("reconnecting…", false));
+      client.on("close",     () => setStatus("disconnected", false));
+      client.on("error",     (e) => { console.error(e); setStatus("error: " + e.message, false); });
+    }
+
+    btn.addEventListener("click", connect);
+  </script>
+</body>
+</html>

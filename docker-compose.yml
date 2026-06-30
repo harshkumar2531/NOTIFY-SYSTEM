@@ -1,0 +1,52 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: notify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notify
+      POSTGRES_PASSWORD: notify_pass
+      POSTGRES_DB: notifydb
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notify -d notifydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: notify-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+
+  redis:
+    image: redis:7
+    container_name: notify-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  vernemq:
+    image: vernemq/vernemq:latest
+    container_name: notify-vernemq
+    restart: unless-stopped
+    environment:
+      DOCKER_VERNEMQ_ACCEPT_EULA: "yes"
+      DOCKER_VERNEMQ_ALLOW_ANONYMOUS: "on"
+      DOCKER_VERNEMQ_LISTENER__WS__DEFAULT: "0.0.0.0:8080"
+    ports:
+      - "1883:1883"
+      - "8080:8080"
+      - "8888:8888"
+
+volumes:
+  pgdata:
+  mongodata:

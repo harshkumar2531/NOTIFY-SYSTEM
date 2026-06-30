@@ -25,5 +25,5 @@ USER appuser
 EXPOSE 8000
 
 # Run uvicorn natively. We recommend binding to 0.0.0.0 in Docker.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

@@ -2,7 +2,9 @@ from contextlib import asynccontextmanager
 import aiomqtt
 import asyncpg
 import redis.asyncio as aioredis
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pymongo import AsyncMongoClient
 from app import crud, pg_ops, redis_ops
 from app.auth import require_api_key
@@ -10,12 +12,10 @@ from app.config import settings
 from app.models import (
     NotificationCreate,
     NotificationOut,
-    UserCreate,
     PreferenceSet,
+    UserCreate,
 )
 from app.state import clients
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,39 +47,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-@app.get("/")
-async def serve_frontend():
-    return FileResponse("index.html")
-
-print(settings.POSTGRES_DSN)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
-def index():
+async def index():
     return FileResponse("static/index.html")
-
-@app.get("/")
-async def root():
-    return {
-        "message": "Notification system is running"
-    }
 
 @app.get("/health")
 async def health():
     status = {}
 
+    # Redis
     try:
         await clients["redis"].ping()
         status["redis"] = "ok"
     except Exception as e:
         status["redis"] = f"error: {e}"
 
+    
     try:
         async with clients["pg"].acquire() as conn:
             await conn.fetchval("SELECT 1")
@@ -87,12 +72,14 @@ async def health():
     except Exception as e:
         status["postgres"] = f"error: {e}"
 
+    
     try:
         await clients["mongo"].admin.command("ping")
         status["mongodb"] = "ok"
     except Exception as e:
         status["mongodb"] = f"error: {e}"
 
+    
     try:
         async with aiomqtt.Client(
             settings.MQTT_HOST,
@@ -147,6 +134,7 @@ async def mark_all_read(user_id: str):
         "marked_read": updated,
         "unread": 0,
     }
+
 
 @app.post("/presence/{user_id}/heartbeat")
 async def heartbeat(user_id: str):
@@ -205,6 +193,4 @@ async def set_preference(
 @app.get("/users/{user_id}/preferences")
 async def get_preferences(user_id: str):
     return await pg_ops.list_preferences(user_id)
-
-print(settings.POSTGRES_DSN)
 

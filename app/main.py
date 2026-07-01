@@ -11,8 +11,15 @@ from app import crud, pg_ops, redis_ops
 from app.auth import require_api_key
 from app.config import settings
 from app.queue import get_arq_pool
-from app.models import NotificationCreate, NotificationOut, PreferenceSet, UserCreate
+from app.models import (
+    ChannelPreferenceSet,
+    NotificationCreate,
+    NotificationOut,
+    PreferenceSet,
+    UserCreate,
+)
 from app.state import clients  # shared dict, opened once at startup, reused everywhere
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +34,7 @@ async def lifespan(app: FastAPI):
 
     # Create Postgres tables if they don't exist yet.
     await pg_ops.init_schema()
-    print("Connections opened")
+    print(" Connections opened")
 
     yield  # <-- the app handles requests here, reusing the connections above
 
@@ -36,7 +43,7 @@ async def lifespan(app: FastAPI):
     await clients["mongo"].close()
     await clients["redis"].aclose()
     await clients["arq"].aclose()
-    print("Connections closed")
+    print(" Connections closed")
 
 
 app = FastAPI(title="Realtime Notification System", lifespan=lifespan)
@@ -86,6 +93,7 @@ async def health():
     return {"status": overall, "services": status}
 
 
+# -------------------- Notification endpoints (Phase 3) --------------------
 
 @app.post("/notifications", dependencies=[Depends(require_api_key)])
 async def create_notification(payload: NotificationCreate):
@@ -101,6 +109,9 @@ async def create_notification(payload: NotificationCreate):
 async def get_notifications(user_id: str):
     """List a user's notifications, newest first."""
     return await crud.list_notifications(user_id)
+
+
+# -------------------- Unread counter + presence (Phase 6) --------------------
 
 @app.get("/notifications/{user_id}/unread-count")
 async def unread_count(user_id: str):
@@ -154,6 +165,27 @@ async def set_preference(user_id: str, payload: PreferenceSet):
 @app.get("/users/{user_id}/preferences")
 async def get_preferences(user_id: str):
     return await pg_ops.list_preferences(user_id)
+
+
+# -------------------- Channel preferences (Phase 12) --------------------
+
+@app.put("/users/{user_id}/channel-preferences", dependencies=[Depends(require_api_key)])
+async def set_channel_preference(user_id: str, payload: ChannelPreferenceSet):
+    """Enable/disable a delivery channel (e.g. 'email') for a notification type."""
+    await pg_ops.set_channel_preference(
+        user_id, payload.type, payload.channel, payload.enabled
+    )
+    return {
+        "user_id": user_id,
+        "type": payload.type,
+        "channel": payload.channel,
+        "enabled": payload.enabled,
+    }
+
+
+@app.get("/users/{user_id}/channel-preferences")
+async def get_channel_preferences(user_id: str):
+    return await pg_ops.list_channel_preferences(user_id)
 
 
 # -------------------- Dead-letter queue admin (Phase 11) --------------------

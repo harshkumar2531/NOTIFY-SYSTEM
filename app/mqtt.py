@@ -1,6 +1,5 @@
 import json
 import aiomqtt
-
 from app.config import settings
 
 async def publish_notification(user_id: str, notification: dict) -> None:

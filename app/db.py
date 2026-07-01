@@ -1,10 +1,14 @@
 from app.config import settings
 from app.state import clients
 
-
 def notifications_collection():
     """Return the MongoDB 'notifications' collection."""
     return clients["mongo"][settings.MONGO_DB]["notifications"]
+
+
+def dead_letters_collection():
+    """Return the MongoDB 'dead_letters' collection (permanently-failed jobs)."""
+    return clients["mongo"][settings.MONGO_DB]["dead_letters"]
 
 
 def serialize(doc: dict) -> dict:

@@ -10,13 +10,14 @@ if sys.platform.startswith("win"):
 async def main(user_id: str) -> None:
     topic = f"users/{user_id}/notifications"
 
-    print(f"Connecting to {settings.MQTT_HOST}:{settings.MQTT_PORT}...")
+    MQTT_HOST = "localhost"  # Windows connects through the published Docker port
 
-    try:
-        async with aiomqtt.Client(
-            settings.MQTT_HOST,
-            port=settings.MQTT_PORT,
-        ) as client:
+    print(f"Connecting to {MQTT_HOST}:{settings.MQTT_PORT}...")
+
+    async with aiomqtt.Client(
+    MQTT_HOST,
+    port=settings.MQTT_PORT,
+    ) as client:
 
             print("Connected to MQTT broker.")
 
@@ -41,8 +42,8 @@ async def main(user_id: str) -> None:
                 except Exception:
                     print("Raw payload:", message.payload)
 
-    except Exception as e:
-        print(f"MQTT Error: {e}")
+                except Exception as e:
+                    print(f"MQTT Error: {e}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

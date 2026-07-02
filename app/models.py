@@ -3,11 +3,14 @@ from pydantic import BaseModel, Field
 
 class NotificationCreate(BaseModel):
 
-    user_id: str                    
+    user_id: str                      
     title: str
     body: str
-    type: str = "general"            
-    data: dict = Field(default_factory=dict)
+    type: str = "general"             
+    data: dict = Field(default_factory=dict)  
+
+    delay_seconds: int | None = None          
+    scheduled_for: datetime | None = None      
 
 class NotificationOut(BaseModel):
 
@@ -34,5 +37,5 @@ class PreferenceSet(BaseModel):
 class ChannelPreferenceSet(BaseModel):
 
     type: str
-    channel: str        
+    channel: str          # 'inapp' | 'email' | 'sms' | 'push'
     enabled: bool

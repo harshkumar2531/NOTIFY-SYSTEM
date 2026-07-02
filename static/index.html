@@ -1,387 +1,276 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Realtime Notifications</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Notifications Dashboard</title>
+  
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
+  
   <style>
-    :root {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #172033;
-      background: #f4f7fb;
+    :root { 
+      --bg: #0f172a; 
+      --card: #1e293b; 
+      --accent: #38bdf8; 
+      --accent-hover: #0ea5e9;
+      --text: #e2e8f0; 
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
     }
-
+    
+    * { box-sizing: border-box; }
+    
     body {
-      margin: 0;
-      padding: 32px;
+      margin: 0; 
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); 
+      color: var(--text); 
+      min-height: 100vh;
     }
-
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
+    
+    header {
+      padding: 16px 24px; 
+      background: #020617; 
+      display: flex; 
+      flex-wrap: wrap;
+      gap: 12px; 
+      align-items: center; 
+      border-bottom: 1px solid #334155;
     }
-
-    .panel {
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
-      margin-bottom: 24px;
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 28px;
-    }
-
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
+    
+    header h1 { font-size: 18px; margin: 0; margin-right: auto; }
+    
     input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid #ccd5e1;
-      font-size: 15px;
-      margin-bottom: 14px;
+      font-size: 14px; 
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      border: 1px solid #334155;
+      background: #0f172a; 
+      color: var(--text);
     }
-
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 11px 16px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-right: 8px;
+    
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
     }
-
-    button.primary {
-      background: #2563eb;
-      color: white;
-    }
-
-    button.secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-
-    button.danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .status {
-      margin-top: 14px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #f1f5f9;
+    
+    button { 
       font-size: 14px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600; 
+      cursor: pointer; 
+      border: none; 
+      transition: background 0.2s ease;
     }
-
-    .status.connected {
-      background: #dcfce7;
-      color: #166534;
+    
+    button.primary { background: var(--accent); color: #04263a; }
+    button.primary:hover { background: var(--accent-hover); }
+    
+    button.danger { background: var(--danger); color: white; }
+    button.danger:hover { background: var(--danger-hover); }
+    
+    button.secondary { background: #334155; color: var(--text); }
+    button.secondary:hover { background: #475569; }
+    
+    #status { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: #334155; font-weight: 500; }
+    #status.connected { background: #166534; color: #dcfce7; }
+    #status.disconnected { background: #7f1d1d; color: #fee2e2; }
+    #status.connecting { background: #854d0e; color: #fef9c3; }
+    
+    main { padding: 24px; max-width: 720px; margin: 0 auto; }
+    
+    .controls-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
     }
-
-    .status.error {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .cards {
-      display: grid;
-      gap: 14px;
-    }
-
+    
+    .empty { opacity: .6; text-align: center; margin-top: 40px; }
+    
+    .cards-container { display: grid; gap: 12px; }
+    
     .card {
-      background: white;
-      border-left: 6px solid #2563eb;
-      border-radius: 14px;
-      padding: 16px;
-      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
-      animation: slideIn 0.2s ease-out;
+      background: var(--card); 
+      border: 1px solid #334155; 
+      border-left: 4px solid var(--accent);
+      border-radius: 10px; 
+      padding: 14px 16px; 
+      animation: pop .25s ease;
     }
-
-    .card.success {
-      border-left-color: #22c55e;
-    }
-
-    .card.warning {
-      border-left-color: #f59e0b;
-    }
-
-    .card.error {
-      border-left-color: #ef4444;
-    }
-
-    .card-title {
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .card-message {
-      color: #334155;
-      margin-bottom: 8px;
-      white-space: pre-wrap;
-    }
-
-    .card-meta {
-      color: #64748b;
-      font-size: 12px;
-    }
-
-    .empty {
-      color: #64748b;
-      text-align: center;
-      padding: 28px;
-      background: white;
-      border-radius: 14px;
-    }
-
-    .toast-area {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      display: grid;
-      gap: 12px;
-      z-index: 9999;
-      max-width: 360px;
-    }
-
-    .toast {
-      background: #172033;
-      color: white;
-      padding: 14px 16px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      animation: slideIn 0.2s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateY(10px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    code {
-      background: #eef2ff;
-      padding: 2px 6px;
-      border-radius: 6px;
+    
+    .card .title { font-weight: 700; margin-bottom: 4px; }
+    .card .body { font-size: 14px; opacity: .9; white-space: pre-wrap; word-break: break-word; }
+    .card .meta { font-size: 11px; opacity: .55; margin-top: 8px; }
+    
+    @keyframes pop { 
+      from { opacity: 0; transform: translateY(-8px); } 
+      to { opacity: 1; transform: none; } 
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="panel">
-      <h1>Realtime Notifications</h1>
 
-      <p>
-        This page connects to VerneMQ over WebSocket at
-        <code>ws://localhost:8080/mqtt</code> and subscribes to:
-      </p>
+  <header>
+    <h1>Live Notifications</h1>
+    <input id="userId" placeholder="User ID" value="user123" />
+    <input id="mqttToken" placeholder="MQTT token (optional)" style="min-width: 220px" type="password" />
+    <button id="connectBtn" class="primary">Connect</button>
+    <button id="disconnectBtn" class="danger" style="display: none;">Disconnect</button>
+    <span id="status" class="disconnected">disconnected</span>
+  </header>
 
-      <p>
-        <code>users/{user_id}/notifications</code>
-      </p>
-
-      <label for="userId">User ID</label>
-      <input id="userId" placeholder="Example: 123" value="123" />
-
-      <label for="brokerUrl">MQTT WebSocket URL</label>
-      <input id="brokerUrl" value="ws://localhost:8080/mqtt" />
-
-      <button class="primary" onclick="connectMqtt()">Connect</button>
-      <button class="danger" onclick="disconnectMqtt()">Disconnect</button>
-      <button class="secondary" onclick="clearNotifications()">Clear</button>
-
-      <div id="status" class="status">Disconnected</div>
+  <main>
+    <div class="controls-row">
+      <button id="clearBtn" class="secondary">Clear Dashboard</button>
     </div>
-
-    <div id="notificationList" class="cards">
-      <div class="empty">No notifications yet.</div>
+    
+    <div id="notifications">
+      <p class="empty">No notifications yet. Connect and wait for messages…</p>
     </div>
-  </div>
-
-  <div id="toastArea" class="toast-area"></div>
+  </main>
 
   <script>
-    let client = null;
-    let currentTopic = null;
+    // VerneMQ default WebSocket endpoint configuration
+    const BROKER_URL = "ws://localhost:8080/mqtt";
 
     const statusEl = document.getElementById("status");
-    const notificationList = document.getElementById("notificationList");
-    const toastArea = document.getElementById("toastArea");
+    const listEl = document.getElementById("notifications");
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const userInput = document.getElementById("userId");
+    const tokenInput = document.getElementById("mqttToken");
 
-    function setStatus(message, type) {
-      statusEl.textContent = message;
-      statusEl.className = "status";
+    let client = null;
 
-      if (type === "connected") {
-        statusEl.classList.add("connected");
-      }
-
-      if (type === "error") {
-        statusEl.classList.add("error");
-      }
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function normalizeNotification(payloadText) {
-      try {
-        const data = JSON.parse(payloadText);
-
-        return {
-          title: data.title || data.subject || "New notification",
-          message: data.message || data.body || JSON.stringify(data, null, 2),
-          type: data.type || data.level || "info",
-          raw: data
-        };
-      } catch {
-        return {
-          title: "New notification",
-          message: payloadText,
-          type: "info",
-          raw: payloadText
-        };
+    function setStatus(text, stateClass) {
+      statusEl.textContent = text;
+      statusEl.className = stateClass; // 'connected', 'disconnected', or 'connecting'
+      
+      if (stateClass === 'connected') {
+        connectBtn.style.display = "none";
+        disconnectBtn.style.display = "inline-block";
+      } else if (stateClass === 'disconnected') {
+        connectBtn.style.display = "inline-block";
+        disconnectBtn.style.display = "none";
       }
     }
 
-    function addNotificationCard(topic, payloadText) {
-      const notification = normalizeNotification(payloadText);
-      const time = new Date().toLocaleString();
-
-      const empty = notificationList.querySelector(".empty");
-      if (empty) {
-        empty.remove();
-      }
+    // Secure DOM manipulation prevents XSS attacks from unknown raw text inputs
+    function addCard(title, body) {
+      const empty = listEl.querySelector(".empty");
+      if (empty) empty.remove();
 
       const card = document.createElement("div");
-      card.className = `card ${escapeHtml(notification.type)}`;
+      card.className = "card";
 
-      card.innerHTML = `
-        <div class="card-title">${escapeHtml(notification.title)}</div>
-        <div class="card-message">${escapeHtml(notification.message)}</div>
-        <div class="card-meta">
-          Topic: ${escapeHtml(topic)} · Received: ${escapeHtml(time)}
-        </div>
-      `;
+      const t = document.createElement("div"); 
+      t.className = "title"; 
+      t.textContent = title || "Notification";
+      
+      const b = document.createElement("div"); 
+      b.className = "body"; 
+      b.textContent = body || "";
+      
+      const m = document.createElement("div"); 
+      m.className = "meta"; 
+      m.textContent = `Received: ${new Date().toLocaleTimeString()}`;
 
-      notificationList.prepend(card);
-      showToast(notification.title, notification.message);
+      card.append(t, b, m);
+      listEl.prepend(card);
     }
 
-    function showToast(title, message) {
-      const toast = document.createElement("div");
-      toast.className = "toast";
-      toast.innerHTML = `
-        <strong>${escapeHtml(title)}</strong>
-        <div>${escapeHtml(message)}</div>
-      `;
-
-      toastArea.appendChild(toast);
-
-      setTimeout(() => {
-        toast.remove();
-      }, 5000);
-    }
-
-    function connectMqtt() {
-      const userId = document.getElementById("userId").value.trim();
-      const brokerUrl = document.getElementById("brokerUrl").value.trim();
-
-      if (!userId) {
-        alert("Please enter a user ID.");
-        return;
+    function connect() {
+      const userId = userInput.value.trim();
+      if (!userId) { 
+        alert("Please enter a User ID"); 
+        return; 
       }
 
-      if (!brokerUrl) {
-        alert("Please enter the MQTT WebSocket URL.");
-        return;
+      if (client) { 
+        disconnect();
       }
 
-      if (client) {
-        disconnectMqtt();
+      setStatus("connecting…", "connecting");
+      
+      const topic = `users/${userId}/notifications`;
+      // Keeps Client ID dynamic to avoid instant disconnect loops on the broker
+      const clientId = `web_${userId}_${Math.random().toString(16).slice(2, 8)}`;
+      const token = tokenInput.value.trim();
+
+      const opts = { 
+        clientId, 
+        clean: true, 
+        reconnectPeriod: 4000, 
+        connectTimeout: 8000 
+      };
+
+      // Apply authentication credentials if security token is provided
+      if (token) { 
+        opts.username = userId; 
+        opts.password = token; 
       }
 
-      currentTopic = `users/${userId}/notifications`;
-
-      const clientId = `browser_notifications_${userId}_${Math.random().toString(16).slice(2)}`;
-
-      setStatus(`Connecting to ${brokerUrl} ...`);
-
-      client = mqtt.connect(brokerUrl, {
-        clientId,
-        clean: true,
-        connectTimeout: 5000,
-        reconnectPeriod: 2000,
-        keepalive: 30
-      });
+      client = mqtt.connect(BROKER_URL, opts);
 
       client.on("connect", () => {
-        setStatus(`Connected. Subscribing to ${currentTopic}`, "connected");
-
-        client.subscribe(currentTopic, { qos: 0 }, (err) => {
+        setStatus("connected", "connected");
+        client.subscribe(topic, { qos: 1 }, (err) => {
           if (err) {
-            setStatus(`Subscribe failed: ${err.message}`, "error");
-            return;
+            setStatus("subscribe failed", "disconnected");
+          } else {
+            addCard("System System Status", `Successfully listening on: ${topic}`);
           }
-
-          setStatus(`Connected and subscribed to ${currentTopic}`, "connected");
         });
       });
 
-      client.on("message", (topic, payload) => {
-        const payloadText = payload.toString();
-        addNotificationCard(topic, payloadText);
+      client.on("message", (recvTopic, payload) => {
+        const raw = payload.toString();
+        let title, body;
+        
+        try {
+          // Attempt to parse incoming valid JSON structures from server
+          const data = JSON.parse(raw);
+          title = data.title || data.type || data.subject || "Notification";
+          body = data.body || data.message || JSON.stringify(data, null, 2);
+        } catch {
+          // Fall back to plain-text string formatting if parsing fails
+          title = "Notification";
+          body = raw;
+        }
+        
+        addCard(title, body);
       });
 
-      client.on("reconnect", () => {
-        setStatus("Reconnecting...");
-      });
-
-      client.on("close", () => {
-        setStatus("Connection closed.");
-      });
-
-      client.on("error", (err) => {
-        setStatus(`MQTT error: ${err.message}`, "error");
-        console.error(err);
+      client.on("reconnect", () => setStatus("reconnecting…", "connecting"));
+      client.on("close", () => setStatus("disconnected", "disconnected"));
+      client.on("error", (e) => { 
+        console.error(e); 
+        setStatus(`error: ${e.message}`, "disconnected"); 
       });
     }
 
-    function disconnectMqtt() {
+    function disconnect() {
       if (client) {
-        client.end(true);
+        try {
+          client.end(true); 
+        } catch (e) {
+          console.error("Error during manual close:", e);
+        }
         client = null;
       }
-
-      setStatus("Disconnected");
+      setStatus("disconnected", "disconnected");
     }
 
-    function clearNotifications() {
-      notificationList.innerHTML = '<div class="empty">No notifications yet.</div>';
-      toastArea.innerHTML = "";
+    function clearDashboard() {
+      listEl.innerHTML = '<p class="empty">No notifications yet. Connect and wait for messages…</p>';
     }
+
+    // Attach Event Listeners
+    connectBtn.addEventListener("click", connect);
+    disconnectBtn.addEventListener("click", disconnect);
+    clearBtn.addEventListener("click", clearDashboard);
   </script>
 </body>
 </html>

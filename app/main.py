@@ -4,9 +4,8 @@ import asyncpg
 import redis.asyncio as aioredis
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from pymongo import AsyncMongoClient  # new built-in async API (replaces deprecated motor)
+from pymongo import AsyncMongoClient  
 import jwt
-
 from app import crud, pg_ops, redis_ops
 from app.auth import (
     get_current_user,

@@ -14,8 +14,8 @@ def verify_password(password: str, password_hash: str) -> bool:
 def _create_token(sub: str, token_type: str, expires: timedelta, **extra) -> str:
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": sub,                 
-        "type": token_type,         
+        "sub": sub,                 # the user id
+        "type": token_type,         # "access" or "refresh"
         "iat": now,
         "exp": now + expires,
         **extra,
@@ -34,6 +34,18 @@ def create_refresh_token(sub: str) -> str:
         sub, "refresh",
         timedelta(days=settings.REFRESH_TOKEN_DAYS),
     )
+
+def create_mqtt_token(sub: str) -> str:
+
+    return _create_token(
+        sub, "mqtt",
+        timedelta(minutes=settings.ACCESS_TOKEN_MINUTES * 30),  
+    )
+
+def create_service_token() -> str:
+
+    return _create_token("service", "service", timedelta(days=365), role="service")
+
 
 def decode_token(token: str) -> dict:
 

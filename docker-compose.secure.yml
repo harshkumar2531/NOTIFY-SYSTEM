@@ -1,0 +1,21 @@
+
+services:
+  vernemq:
+    environment:
+      DOCKER_VERNEMQ_ALLOW_ANONYMOUS: "off"
+      DOCKER_VERNEMQ_PLUGINS__VMQ_WEBHOOKS: "on"
+
+      # webhook 1: authenticate on connect
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL1__HOOK: "auth_on_register"
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL1__ENDPOINT: "http://app:8000/mqtt/auth/on_register"
+      # webhook 2: authorize subscriptions
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL2__HOOK: "auth_on_subscribe"
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL2__ENDPOINT: "http://app:8000/mqtt/auth/on_subscribe"
+      # webhook 3: authorize publishes
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL3__HOOK: "auth_on_publish"
+      DOCKER_VERNEMQ_VMQ_WEBHOOKS__POOL3__ENDPOINT: "http://app:8000/mqtt/auth/on_publish"
+
+      condition: service_started
+
+
+

@@ -173,3 +173,4 @@ volumes:
   redis_data:
   postgres_data:
   vernemq_data:
+

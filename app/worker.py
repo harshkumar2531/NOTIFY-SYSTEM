@@ -1,14 +1,12 @@
 import logging
 import random
 from datetime import datetime, timezone
-
 import asyncpg
 import redis.asyncio as aioredis
 from arq import Retry, cron
 from arq.connections import RedisSettings
 from bson import ObjectId
 from pymongo import AsyncMongoClient
-
 from app import pg_ops, redis_ops
 from app.config import settings
 from app.email_channel import send_email
@@ -20,10 +18,8 @@ logging.basicConfig(level=logging.INFO)
 
 MAX_TRIES = 4
 
-
 def _notifications():
     return clients["mongo"][settings.MONGO_DB]["notifications"]
-
 
 async def _dead_letter(
     ctx,
@@ -50,7 +46,6 @@ async def _dead_letter(
         user_id,
         error,
     )
-
 
 async def _maybe_email_fallback(
     user_id: str,
@@ -91,7 +86,6 @@ async def _maybe_email_fallback(
         logger.exception(
             "Failed sending fallback email"
         )
-
 
 async def deliver_notification(
     ctx,
@@ -163,7 +157,6 @@ async def deliver_notification(
 
     return "ok"
 
-
 async def sweep_scheduled(ctx) -> int:
 
     now = datetime.now(timezone.utc)
@@ -215,7 +208,6 @@ async def sweep_scheduled(ctx) -> int:
 
     return count
 
-
 async def startup(ctx):
 
     try:
@@ -250,7 +242,6 @@ async def startup(ctx):
         )
         raise
 
-
 async def shutdown(ctx):
 
     try:
@@ -278,7 +269,6 @@ async def shutdown(ctx):
         )
 
     logger.info("Worker connections closed")
-
 
 class WorkerSettings:
 

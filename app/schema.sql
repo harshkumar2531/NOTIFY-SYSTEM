@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
 CREATE TABLE IF NOT EXISTS notification_preferences (
     user_id TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type    TEXT    NOT NULL,                     

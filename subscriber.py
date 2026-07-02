@@ -10,7 +10,7 @@ if sys.platform.startswith("win"):
 async def main(user_id: str) -> None:
     topic = f"users/{user_id}/notifications"
 
-    MQTT_HOST = "localhost"  # Windows connects through the published Docker port
+    MQTT_HOST = "localhost"  
 
     print(f"Connecting to {MQTT_HOST}:{settings.MQTT_PORT}...")
 

@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 1025
     SMTP_FROM: str = "notifications@yourapp.dev"
 
+
+    JWT_SECRET: str                      
+    JWT_ALG: str = "HS256"
+    ACCESS_TOKEN_MINUTES: int = 15
+    REFRESH_TOKEN_DAYS: int = 7
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
